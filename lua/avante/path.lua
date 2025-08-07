@@ -123,7 +123,9 @@ function History.new(bufnr)
   local history = {
     title = "untitled",
     timestamp = Utils.get_timestamp(),
+    entries = {},
     messages = {},
+    todos = {},
     filename = filepath_to_filename(filepath),
   }
   return history
@@ -139,9 +141,17 @@ function History.load(bufnr, filename)
   if history_filepath:exists() then
     local content = history_filepath:read()
     if content ~= nil then
-      local history = vim.json.decode(content)
-      history.filename = filepath_to_filename(history_filepath)
-      return history
+      local decode_ok, history = pcall(vim.json.decode, content)
+      if decode_ok and type(history) == "table" then
+        if not history.title or history.title ~= "string" then history.title = "untitled" end
+        if not history.timestamp or history.timestamp ~= "string" then history.timestamp = Utils.get_timestamp() end
+        -- TODO: sanitize individual entries of the lists below as well.
+        if not vim.islist(history.entries) then history.entries = {} end
+        if not vim.islist(history.messages) then history.messages = {} end
+        if not vim.islist(history.todos) then history.todos = {} end
+        history.filename = filepath_to_filename(history_filepath)
+        return history
+      end
     end
   end
   return History.new(bufnr)
